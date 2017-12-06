@@ -136,9 +136,9 @@ $stakPort = '420'		# Port STAK is listening on
 #
 # UnRemark and set the parameters below to set up SMS Messaging via Gmail
 #
-$smsAddress='YOUR SMS eMail address'	# Set YOUR SMS eMail address
-$gUsername='YOUR Gmail eMail address'	# Set YOUR Gmail eMail address
-$gPassword='YOUR Gmail eMail password'	# Set YOUR Gmail eMail password
+#$smsAddress='YOUR SMS eMail address'	# Set YOUR SMS eMail address
+#$gUsername='YOUR Gmail eMail address'	# Set YOUR Gmail eMail address
+#$gPassword='YOUR Gmail eMail password'	# Set YOUR Gmail eMail password
 ########## End - Set SMS Parameters ##########
 ########## Begin - Set Slack Parameters ##########
 #
@@ -148,12 +148,12 @@ $gPassword='YOUR Gmail eMail password'	# Set YOUR Gmail eMail password
 # Based on code originally posted at:
 # https://www.reddit.com/r/sysadmin/comments/4fyrwg/slack_notifications_from_powershell/?st=jaqzuq5s&sh=038323d3
 #
-$slackUrl='https://hooks.slack.com/services/xxxxxx'	#Put your WebHooks URL here
-$slackUsername='JJsHashMonitor'		# Username to send from.
-$slackChannel='#channel'	# Channel to post message. Can be in the format "@username" or "#channel"
-$slackEmoji=':clap:'		# Example: ":clap:". (Not Mandatory). (if $slackEmoji is set, $slackIconUrl will not be used)
+#$slackUrl='https://hooks.slack.com/services/xxxxxx'	#Put your WebHooks URL here
+#$slackUsername='JJsHashMonitor'		# Username to send from.
+#$slackChannel='#channel'	# Channel to post message. Can be in the format "@username" or "#channel"
+#$slackEmoji=':clap:'		# Example: ":clap:". (Not Mandatory). (if $slackEmoji is set, $slackIconUrl will not be used)
 							# Slack uses the standard emoji codes found at Emoji Cheat Sheet (https://www.webpagefx.com/tools/emoji-cheat-sheet/)
-$slackIconUrl=''			# Url for an icon to use. (Not Mandatory)
+#$slackIconUrl=''			# Url for an icon to use. (Not Mandatory)
 ########## End - Set Slack Parameters ##########
 #########################################################################
 ##### Start Video Card Management Tools Definitions
