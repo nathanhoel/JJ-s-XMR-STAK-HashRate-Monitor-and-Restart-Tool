@@ -678,7 +678,9 @@ Function refresh-Screen
 	Write-host -fore Green `nPool Difficulty: $global:currDiff
 	Write-host -fore Green `nTotal Shares: $global:TotalShares
 	Write-host -fore Green `nGood Shares:	$global:GoodShares
+	If ($global:TotalShares > 0) {
 	Write-host -fore Green `nGood Shares %:	(($global:GoodShares / $global:TotalShares) * 100)
+	}
 	Write-host -fore Green `nShare Time:	$global:TimeShares
 	#Write-Host "=================================================="
 }
