@@ -3,7 +3,7 @@
 	JJ's XMR-STAK HashRate Monitor and Restart Tool
 
 	Based on an idea by @CircusDad on SupportXMR Chat
-	His Vega Mining Guide for XMR --> https://vegamining.blogspot.com/
+	His Vega Mining Guide for XMR --> http://vega.miningguides.com/
 
 	How many times have you walked away for your computer to come back
 	and notice that your hash rate dropped by HUNDREDS of hashes?
@@ -37,10 +37,13 @@
 				If hash rate falls below the target as defined in the $hdiff variable (default is 100 hashes) 
 				or STAK stops responding the miner process is killed.
 				Script re-starts itself.
+				SMS alerts via Gmail
+				Alerts via Slack WebHooks
 
 	*** IMPORTANT NOTE ***: If the script cannot kill the miner it will stop and wait for input.
 							Otherwise it would invoke the miner over and over until the PC ran out of memory.
 							In testing I have not seen it fail to kill the miner but I need to account for it.
+							It will also stop if the miner cannot be found (for obvious reasons)
 
 	Requirements:	Elevated privilege (Run as Administrator)
 					Enable Powershell scripts to run.
@@ -62,15 +65,15 @@
 
 	Usage:	Powershell.exe -ExecutionPolicy Bypass -File JJs_HashMonitor.ps1
 	
-	Future enhancements under consideration:	SMS/email alerts
-												Move settings out of the script and into a simple
+	Future enhancements under consideration:	Move settings out of the script and into a simple
 												txt file to make it easier to manage them.
+												
 
 	Author:	TheJerichoJones at the Google Monster mail system
 
-	Version: 3.1f
+	Version: 3.2
 	
-	Release Date: 2017-12-03
+	Release Date: 2017-12-06
 
 	Copyright 2017, TheJerichoJones
 
@@ -92,7 +95,7 @@
 #  !! Scroll down to "USER VARIABLES SECTION"
 #  !! There are variables you want to review/modify for your setup
 ######################################################################################
-$ver = "3.1f"
+$ver = "3.2"
 $Host.UI.RawUI.WindowTitle = "JJ's XMR-STAK HashRate Monitor and Restart Tool v $ver"
 $Host.UI.RawUI.BackgroundColor = "DarkBlue"
 
@@ -118,10 +121,7 @@ $vidTool = @()
 ######################################################################################
 
 #########################################################################
-# Set the REQUIRED variables for your Mining Configuration
-#########################################################################
-# Read this section carefully or you may end up overclocking your video
-# card when you don't want to!! YOU HAVE BEEN WARNED
+# Begin - Set the REQUIRED variables for your Mining Configuration
 #########################################################################
 $Logfile = "XMR_Restart_$(get-date -f yyyy-MM-dd).log"	# Log what we do, delete or REMARK if you don't want logging
 $global:STAKexe = "XMR-STAK.EXE"	# The miner. Expects to be in same folder as this script
@@ -129,7 +129,38 @@ $global:STAKexe = "XMR-STAK.EXE"	# The miner. Expects to be in same folder as th
 $stakIP = '127.0.0.1'	# IP or hostname of the machine running STAK (ALWAYS LOCAL) Remote start/restart of the miner is UNSUPPORTED.
 						# !! DON'T FORGET TO ENABLE THE WEBSERVER IN YOUR CONFIG FILE !!
 $stakPort = '420'		# Port STAK is listening on
-
+#########################################################################
+# End - Set the REQUIRED variables for your Mining Configuration
+#########################################################################
+########## Begin - Set SMS Parameters ##########
+#
+# UnRemark and set the parameters below to set up SMS Messaging via Gmail
+#
+#$smsAddress='YOUR SMS eMail address'	# Set YOUR SMS eMail address
+#$gUsername='YOUR Gmail eMail address'	# Set YOUR Gmail eMail address
+#$gPassword='YOUR Gmail eMail password'	# Set YOUR Gmail eMail password
+########## End - Set SMS Parameters ##########
+########## Begin - Set Slack Parameters ##########
+#
+# UnRemark and set the parameters below to set up Slack Messaging via WebHooks
+#
+# Add the "Incoming WebHooks" integration to get started: https://slack.com/apps/A0F7XDUAZ-incoming-webhooks
+# Based on code originally posted at:
+# https://www.reddit.com/r/sysadmin/comments/4fyrwg/slack_notifications_from_powershell/?st=jaqzuq5s&sh=038323d3
+#
+#$slackUrl='https://hooks.slack.com/services/xxxxxx'	#Put your WebHooks URL here
+#$slackUsername='JJsHashMonitor'		# Username to send from.
+#$slackChannel='#channel'	# Channel to post message. Can be in the format "@username" or "#channel"
+#$slackEmoji=':clap:'		# Example: ":clap:". (Not Mandatory). (if $slackEmoji is set, $slackIconUrl will not be used)
+							# Slack uses the standard emoji codes found at Emoji Cheat Sheet (https://www.webpagefx.com/tools/emoji-cheat-sheet/)
+#$slackIconUrl=''			# Url for an icon to use. (Not Mandatory)
+########## End - Set Slack Parameters ##########
+#########################################################################
+##### Start Video Card Management Tools Definitions
+#########################################################################
+# Read this section carefully or you may end up overclocking your video
+# card when you don't want to!! YOU HAVE BEEN WARNED
+#########################################################################
 ##### Start Video Card Management Tools Definitions
 # These will be executed in order prior to the miner
 # Create as many as needed
@@ -160,7 +191,11 @@ $STAKstable = 120		# How long to wait for the hashrate to stabilize.
 #########################################################################
 ###################### END USER DEFINED VARIABLES #######################
 #################### MAKE NO CHANGES BELOW THIS LINE ####################
-
+If ($smsAddress)
+{
+	$secpasswd = ConvertTo-SecureString $gPassword -AsPlainText -Force
+	$gCredentials = New-Object System.Management.Automation.PSCredential ($gUsername, $secpasswd)
+}
 #####  BEGIN FUNCTIONS #####
 
 function call-self 
@@ -199,6 +234,15 @@ function chk-STAKEXE
         Write-Host -fore Red "   Can't do much without the miner now can you!"
 		Write-Host -fore Red "          Now exploding... buh bye!"
 		Write-Host -fore Red !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		$msgText="$timestamp	$env:computername - WAITING FOR INPUT - $global:STAKexe NOT FOUND.."
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		wait-ForF12
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	=== Script Ended ===")
@@ -210,19 +254,19 @@ function reset-VideoCard {
 	###################################
 	##### Reset Video Card(s) #####
 	##### No error checking
-	Write-host "Resetting Video Card(s)..."
+	Write-Host "Resetting Video Card(s)..."
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Running Video Card Reset")
 	$d = Get-PnpDevice| where {$_.friendlyname -like 'Radeon RX Vega'}
 	$vCTR = 0
 	foreach ($dev in $d) {
 		$vCTR = $vCTR + 1
-		Write-host -fore Green "Disabling "$dev.Name '#'$vCTR
+		Write-Host -fore Green "Disabling "$dev.Name '#'$vCTR
 		Disable-PnpDevice -DeviceId $dev.DeviceID -ErrorAction Ignore -Confirm:$false | Out-Null
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	Disabled $vCTR $dev")
 		Start-Sleep -s 3
-		Write-host -fore Green "Enabling "$dev.Name '#' $vCTR
+		Write-Host -fore Green "Enabling "$dev.Name '#' $vCTR
 		Enable-PnpDevice -DeviceId $dev.DeviceID -ErrorAction Ignore -Confirm:$false | Out-Null
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	Enabled $vCTR $dev")
@@ -230,7 +274,7 @@ function reset-VideoCard {
 	}
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	$vCTR Video Card(s) Reset")
-	Write-host -fore Green $vCTR "Video Card(s) Reset"
+	Write-Host -fore Green $vCTR "Video Card(s) Reset"
 }
 
 Function Run-Tools ($app)
@@ -240,7 +284,7 @@ Function Run-Tools ($app)
 		$prog = ($item -split "\s", 2)
 		if (Test-Path $prog[0])
 		{
-			Write-host -fore Green "Starting " $prog[0]
+			Write-Host -fore Green "Starting " $prog[0]
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	Starting $item ")
 			If ($prog[1]) {
@@ -286,6 +330,15 @@ function start-Mining
         Write-Host -fore Red "   Can't do much without the miner now can you!"
 		Write-Host -fore Red "          Now exploding... buh bye!"
 		Write-Host -fore Red !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		$msgText="$timestamp	$env:computername - WAITING FOR INPUT - $global:STAKexe NOT FOUND.."
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		wait-ForF12
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	=== Script Ended ===")
@@ -296,15 +349,14 @@ function start-Mining
 Function chk-STAK($global:Url) {
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Waiting for STAK HTTP daemon to start")
-	Write-host "Waiting for STAK HTTP daemon to start"
+	Write-Host "Waiting for STAK HTTP daemon to start"
 	
 	$flag = "False"
-	$web = New-Object System.Net.WebClient
     $TimeStart = Get-Date -format HH:mm:ss
     $timer = $timeout
 	DO {
 		Try {
-			$result = $web.DownloadString($global:Url)
+			$result = Invoke-WebRequest -UseBasicParsing -Uri $global:Url -TimeoutSec 60
 			$flag = "True"
 			}
 		Catch {
@@ -312,8 +364,8 @@ Function chk-STAK($global:Url) {
             $timeDiff = (New-TimeSpan -Start $timeStart -End (Get-Date -format HH:mm:ss)).TotalSeconds
             If ($timeDiff -lt $timeout)
 			{
-				Write-host -fore Red "STAK not ready... Waiting up to $timer seconds."
-				Write-host -fore Red "Press CTRL-C to EXIT NOW"
+				Write-Host -fore Red "STAK not ready... Waiting up to $timer seconds."
+				Write-Host -fore Red "Press CTRL-C to EXIT NOW"
 			}
             If ($timeDiff -gt $timeout)
             {
@@ -327,7 +379,7 @@ Function chk-STAK($global:Url) {
 	{
 		Clear-Host
 		set-ForegroundWindow | Out-Null
-		Write-host -fore Green "`n`n`n## STAK HTTP daemon has started ##`n"
+		Write-Host -fore Green "`n`n`n## STAK HTTP daemon has started ##`n"
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	STAK started successfully")
 		
@@ -335,10 +387,19 @@ Function chk-STAK($global:Url) {
 	ElseIf ($flag -eq "False")
 	{
 		Clear-Host
-		Write-host -fore Red "`n`n`n!! Timed out waiting for STAK HTTP daemon to start !!`n"
+		Write-Host -fore Red "`n`n`n!! Timed out waiting for STAK HTTP daemon to start !!`n"
 		start-sleep -s 10
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	Timed out waiting for STAK HTTP daemon to start")
+		$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Timed out waiting for STAK HTTP daemon to start"
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		Start-Sleep -s 10
 		#Write-Host -NoNewLine "Press any key to EXIT..."
 		#$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -348,10 +409,19 @@ Function chk-STAK($global:Url) {
 	Else
 	{
 		Clear-Host
-		Write-host -fore Red "`n`n`n*** Unknown failure (Daemon failed to start?)... EXITING ***`n"
+		Write-Host -fore Red "`n`n`n*** Unknown failure (Daemon failed to start?)... EXITING ***`n"
 		start-sleep -s 10
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	Unknown failure starting STAK (Daemon failed to start?)")
+		$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Unknown failure starting STAK (Daemon failed to start?)"
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		Start-Sleep -s 10
 		#Write-Host -NoNewLine "Press any key to EXIT..."
 		#$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -367,7 +437,7 @@ function starting-Hash
 {
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Waiting for hash rate to stabilize")
-	#Write-host -fore Green "Waiting for hash rate to stabilize"
+	#Write-Host -fore Green "Waiting for hash rate to stabilize"
 
     #$startTestHash = 1
     $global:currTestHash = 0
@@ -391,11 +461,20 @@ function starting-Hash
 			If (!$global:currTestHash -eq [int] -And $sCTR -gt 20)
 			{
 				Clear-Host
-				Write-host -fore Red "`nSTAK is not returning good hash data"
-				Write-host -fore Red "`nCurrent Hash = $global:currTestHash"
-				Write-host -fore Red "Restarting in 10 seconds"
+				Write-Host -fore Red "`nSTAK is not returning good hash data"
+				Write-Host -fore Red "`nCurrent Hash = $global:currTestHash"
+				Write-Host -fore Red "Restarting in 10 seconds"
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	Hash Mon Phase: STAK is not returning good data. Current Hash =  $global:currTestHash")
+				$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - STAK is not returning good data. Current Hash =  $global:currTestHash"
+				If ($smsAddress)
+				{
+					Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+				}
+				If ($slackUrl)
+				{
+					Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+				}
 				Start-Sleep -s 10
 				$flag = "False"
 				#Break
@@ -407,11 +486,20 @@ function starting-Hash
 			ElseIf ($global:currTestHash -eq 0 -And $sCTR -gt 20)
 			{
 				Clear-Host
-				Write-host -fore Red "`nSTAK seems to have stopped hashing"
-				Write-host -fore Red "`nCurrent Hash =  $global:currTestHash"
-				Write-host -fore Red "Restarting in 10 seconds"
+				Write-Host -fore Red "`nSTAK seems to have stopped hashing"
+				Write-Host -fore Red "`nCurrent Hash =  $global:currTestHash"
+				Write-Host -fore Red "Restarting in 10 seconds"
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	Hash Mon Phase: STAK seems to have stopped hashing. Current Hash =  $global:currTestHash")
+				$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - STAK seems to have stopped hashing. Current Hash =  $global:currTestHash"
+				If ($smsAddress)
+				{
+					Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+				}
+				If ($slackUrl)
+				{
+					Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+				}
 				Start-Sleep -s 10
 				$flag = "False"
 				#Break
@@ -428,10 +516,10 @@ function starting-Hash
 			Clear-Host
 			If ($global:currTestHash)
 			{
-				Write-host -fore Green "`n`nCurrent Hash Rate: $global:currTestHash H/s"
+				Write-Host -fore Green "`n`nCurrent Hash Rate: $global:currTestHash H/s"
 			}
-			Write-host -fore Green "`n`nWaiting $STAKstable seconds for hashrate to stabilize."
-			Write-host -fore Green "Press CTRL-C to EXIT NOW"
+			Write-Host -fore Green "`n`nWaiting $STAKstable seconds for hashrate to stabilize."
+			Write-Host -fore Green "Press CTRL-C to EXIT NOW"
 			Start-Sleep -s 1
 			$STAKstable = $STAKstable - 1
 			$sCTR = $sCTR + 1
@@ -439,10 +527,19 @@ function starting-Hash
 		Else
 		{
 			Clear-Host
-			Write-host -fore Red "`nSTAK is not returning array data"
-			Write-host -fore Red "Restarting in 10 seconds"
+			Write-Host -fore Red "`nSTAK is not returning array data"
+			Write-Host -fore Red "Restarting in 10 seconds"
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	Stabilization Phase: STAK is not returning array data.")
+			$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - STAK is not returning array data."
+			If ($smsAddress)
+			{
+				Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+			}
+			If ($slackUrl)
+			{
+				Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+			}
 			Start-Sleep -s 10
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	=== Script Ended ===")
@@ -453,9 +550,18 @@ function starting-Hash
     If (!$global:currTestHash)
 	{
 		Clear-Host
-		Write-host -fore Green `nCould not get hashrate... restarting
+		Write-Host -fore Green `nCould not get hashrate... restarting
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	Stabilization Phase: Could not get hashrate... restarting")
+		$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Stabilization Phase: Could not get hashrate... restarting"
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		log-Write ("$timeStamp	$ver	=== Script Ended ===")
 		call-Self
@@ -475,13 +581,22 @@ function starting-Hash
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Hash rate stabilized")
 	log-Write ("$timeStamp	$ver	Starting Hashrate: $global:maxhash H/s	Drop Target Hashrate: $global:rTarget H/s hDiff: $hdiff")
+	$msgText="$timestamp	$env:computername - Starting Hashrate: $global:maxhash H/s	Drop Target Hashrate: $global:rTarget H/s hDiff: $hdiff"
+	If ($smsAddress)
+	{
+		Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+	}
+	If ($slackUrl)
+	{
+		Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+	}
 }
 
 function current-Hash
 {
 	# Check our current hashrate against low target every 60 seconds
 	Clear-Host
-	Write-host -fore Green `nHash monitoring has begun.
+	Write-Host -fore Green `nHash monitoring has begun.
 	$timer = 0
 	$runTime = 0
 	$flag = "False"
@@ -496,17 +611,26 @@ function current-Hash
 		$global:currHash = $null
 		$data = @{}
 		$total = @{}
-		Write-host -fore Green `nQuerying STAK...this can take a minute.
+		Write-Host -fore Green `nQuerying STAK...this can take a minute.
 		$rawdata = Invoke-WebRequest -UseBasicParsing -Uri $global:Url -TimeoutSec 60
 		$flag = "True"
 		}
 	Catch
 		{
 			Clear-Host
-			Write-host -fore Red "`nWe seem to have lost connectivity to STAK"
-			Write-host -fore Red "Restarting in 10 seconds"
+			Write-Host -fore Red "`nWe seem to have lost connectivity to STAK"
+			Write-Host -fore Red "Restarting in 10 seconds"
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
-			log-Write ("$timeStamp	$ver	Restarting - Lost connectivity to STAK")
+			log-Write ("$timeStamp	$ver	Hash Mon Phase: Restarting - Lost connectivity to STAK")
+			$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Hash Mon Phase: We seem to have lost connectivity to STAK"
+			If ($smsAddress)
+			{
+				Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+			}
+			If ($slackUrl)
+			{
+				Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+			}
 			Start-Sleep -s 10
 			$flag = "False"
 			#Break
@@ -526,11 +650,20 @@ function current-Hash
 			If (!$global:currHash -eq [int])
 			{
 				Clear-Host
-				Write-host -fore Red "`nSTAK is not returning good hash data"
-				Write-host -fore Red "`nCurrent Hash = $global:currHash"
-				Write-host -fore Red "Restarting in 10 seconds"
+				Write-Host -fore Red "`nSTAK is not returning good hash data"
+				Write-Host -fore Red "`nCurrent Hash = $global:currHash"
+				Write-Host -fore Red "Restarting in 10 seconds"
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	Hash Mon Phase: STAK is not returning good data. Current Hash =  $global:currHash")
+				$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Hash Mon Phase: STAK is not returning good data. Current Hash =  $global:currHash"
+				If ($smsAddress)
+				{
+					Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+				}
+				If ($slackUrl)
+				{
+					Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+				}
 				Start-Sleep -s 10
 				$flag = "False"
 				Break
@@ -539,11 +672,20 @@ function current-Hash
 			ElseIf ($global:currHash -eq 0)
 			{
 				Clear-Host
-				Write-host -fore Red "`nSTAK seems to have stopped hashing"
-				Write-host -fore Red "`nCurrent Hash =  $global:currHash"
-				Write-host -fore Red "Restarting in 10 seconds"
+				Write-Host -fore Red "`nSTAK seems to have stopped hashing"
+				Write-Host -fore Red "`nCurrent Hash =  $global:currHash"
+				Write-Host -fore Red "Restarting in 10 seconds"
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	Hash Mon Phase: STAK seems to have stopped hashing. Current Hash =  $global:currHash")
+				$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Hash Mon Phase: STAK seems to have stopped hashing. Current Hash =  $global:currHash"
+				If ($smsAddress)
+				{
+					Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+				}
+				If ($slackUrl)
+				{
+					Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+				}
 				Start-Sleep -s 10
 				$flag = "False"
 				Break
@@ -553,10 +695,19 @@ function current-Hash
 		Else
 		{
 			Clear-Host
-			Write-host -fore Red "`nSTAK is not returning array data"
-			Write-host -fore Red "Restarting in 10 seconds"
+			Write-Host -fore Red "`nSTAK is not returning array data"
+			Write-Host -fore Red "Restarting in 10 seconds"
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	Hash Mon Phase: STAK is not returning array data. $rawdata")
+			$msgText="$timestamp	$env:computername - RESTARTING SCRIPT - Hash Mon Phase: STAK is not returning array data. $rawdata"
+			If ($smsAddress)
+			{
+				Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+			}
+			If ($slackUrl)
+			{
+				Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+			}
 			Start-Sleep -s 10
 			$flag = "False"
 			Break
@@ -595,11 +746,20 @@ function current-Hash
 	If ($flag -eq "True")
 	{
 		Clear-Host
-		Write-host -fore Red "`n`nHash rate dropped from $global:maxhash H/s to $global:currHash H/s"
-		Write-host -fore Red "`nRestarting in 10 seconds"
+		Write-Host -fore Red "`n`nHash rate dropped from $global:maxhash H/s to $global:currHash H/s"
+		Write-Host -fore Red "`nRestarting in 10 seconds"
 		$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 		$tFormat =  get-RunTime ($runTime)
 		log-Write ("$timeStamp	$ver	Restarting after $tFormat - Hash rate dropped from $global:maxhash H/s to $global:currHash H/s")
+		$msgText="$timestamp	$env:computername - RESTARTING SCRIPT after $tFormat - Hash rate dropped from $global:maxhash H/s to $global:currHash H/s"
+		If ($smsAddress)
+		{
+			Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+		}
+		If ($slackUrl)
+		{
+			Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+		}
 		Start-Sleep -s 10
 	}
 }
@@ -612,7 +772,7 @@ function kill-Process ($STAKexe) {
 		# get STAK process
 		$stakPROC = Get-Process $prog -ErrorAction SilentlyContinue
 		if ($stakPROC) {
-			Write-host -fore Red "$prog is running... killing $prog process."
+			Write-Host -fore Red "$prog is running... killing $prog process."
 			# try gracefully first
 			$stakPROC.CloseMainWindow() | Out-Null
 			# kill after five seconds
@@ -621,12 +781,21 @@ function kill-Process ($STAKexe) {
 				$stakPROC | Stop-Process -Force | Out-Null
 			}
 			if (!$stakPROC.HasExited) {
-				Write-host -fore Red "Failed to kill the $prog process"
-				Write-host -fore Red "`nIf we don't stop here STAK would be invoked"
-				Write-host -fore Red "`nover and over until the PC crashed."
-				Write-host -fore Red "`n`n That would be very bad."
-				Write-host -fore Red 'Press any key to EXIT...';
-				$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+				Write-Host -fore Red "Failed to kill the $prog process"
+				Write-Host -fore Red "`nIf we don't stop here STAK would be invoked"
+				Write-Host -fore Red "`nover and over until the PC crashed."
+				Write-Host -fore Red "`n`n That would be very bad."
+				Write-Host -fore Red 'Press any key to EXIT...';
+				$msgText="$timestamp	$env:computername - FATAL ERROR - STOPPING SCRIPT - Failed to kill the $prog process"
+				If ($smsAddress)
+				{
+					Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+				}
+				If ($slackUrl)
+				{
+					Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+				}
+				wait-ForF12
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	Failed to kill $prog")
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
@@ -635,27 +804,36 @@ function kill-Process ($STAKexe) {
 			}
 			Else
 			{
-				Write-host -fore Green "Successfully killed the $prog process"
+				Write-Host -fore Green "Successfully killed the $prog process"
 				$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 				log-Write ("$timeStamp	$ver	STAK closed successfully")
 			}
 		}
 		Else
 		{
-			#Write-host -fore Green "`n$prog process was not found"
+			#Write-Host -fore Green "`n$prog process was not found"
 			#$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			#log-Write ("$timeStamp	$ver	$prog process was not found")
 		}
 	}
 	Catch
 	{
-			Write-host -fore Red "Failed to kill the process $prog"
-			Write-host -fore Red "`nIf we don't stop here STAK would be invoked"
-			Write-host -fore Red "`nover and over until the PC crashed."
-			Write-host -fore Red "`n`n That would be very bad.`n`n"
-			wait-ForF12
+			Write-Host -fore Red "Failed to kill the process $prog"
+			Write-Host -fore Red "`nIf we don't stop here STAK would be invoked"
+			Write-Host -fore Red "`nover and over until the PC crashed."
+			Write-Host -fore Red "`n`n That would be very bad.`n`n"
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	Failed to kill $prog")
+			$msgText="$timestamp	$env:computername - FATAL Error:EXITING SCRIPT - Failed to kill $prog"
+			If ($smsAddress)
+			{
+				Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+			}
+			If ($slackUrl)
+			{
+				Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+			}
+			wait-ForF12
 			$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 			log-Write ("$timeStamp	$ver	=== Script Ended ===")
 			EXIT
@@ -668,26 +846,31 @@ Function refresh-Screen
 	$tmRunTime =  get-RunTime ($runTime)
 	$tpUpTime =  get-RunTime ($global:UpTime)
 	#Write-Host "=================================================="
-	Write-host -fore Green `nStarting Hash Rate:	$global:maxhash H/s 
-	Write-host -fore Green `nRestart Target Hash Rate:	$global:rTarget H/s
-	Write-host -fore Green `nCurrent Hash Rate: $global:currHash H/s
-	Write-host -fore Green `nMonitoring Uptime:	$tmRunTime `n
+	Write-Host -fore Green `nStarting Hash Rate:	$global:maxhash H/s 
+	Write-Host -fore Green `nRestart Target Hash Rate:	$global:rTarget H/s
+	Write-Host -fore Green `nCurrent Hash Rate: $global:currHash H/s
+	Write-Host -fore Green `nMonitoring Uptime:	$tmRunTime `n
 	Write-Host "=================================================="
-	Write-host -fore Green `nPool:	$global:ConnectedPool
-	Write-host -fore Green `nPool Uptime:  $tpUpTime
-	Write-host -fore Green `nPool Difficulty: $global:currDiff
-	Write-host -fore Green `nTotal Shares: $global:TotalShares
-	Write-host -fore Green `nGood Shares:	$global:GoodShares
+
+	Write-Host -fore Green `nPool:	$global:ConnectedPool
+	Write-Host -fore Green `nPool Uptime:  $tpUpTime
+	Write-Host -fore Green `nPool Difficulty: $global:currDiff
+	Write-Host -fore Green `nTotal Shares: $global:TotalShares
+	Write-Host -fore Green `nGood Shares:	$global:GoodShares
 	If ($global:TotalShares > 0) {
-	Write-host -fore Green `nGood Shares %:	(($global:GoodShares / $global:TotalShares) * 100)
+		Write-Host -fore Green `nGood Shares %:	(($global:GoodShares / $global:TotalShares) * 100)
 	}
-	Write-host -fore Green `nShare Time:	$global:TimeShares
-	#Write-Host "=================================================="
+	Write-Host -fore Green `nShare Time:	$global:TimeShares
+	Write-Host "`nThis software is supported by donations."
+	Write-Host "`nhttps://preview.tinyurl.com/y85h6m2b"
+	Write-Host "`nIf you can't do a direct donation then mining a"
+	Write-Host "`nfew minutes a day for me at pool.SupportXMR.com"
+	Write-Host "`nwould be greatly appreciated."
 }
 
 function set-STAKVars
 {
-	Write-host -fore Green "Setting Env Variables for STAK"
+	Write-Host -fore Green "Setting Env Variables for STAK"
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Setting Env Variables for STAK")
 
@@ -696,7 +879,7 @@ function set-STAKVars
 	[System.Environment]::SetEnvironmentVariable("GPU_MAX_ALLOC_PERCENT", "99", "User")
 	[System.Environment]::SetEnvironmentVariable("GPU_SINGLE_ALLOC_PERCENT", "99", "User")
 	
-	Write-host -fore Green "Env Variables for STAK have been set"
+	Write-Host -fore Green "Env Variables for STAK have been set"
 	$timeStamp = "{0:yyyy-MM-dd_HH:mm}" -f (Get-Date)
 	log-Write ("$timeStamp	$ver	Env Variables for STAK have been set")
 }
@@ -811,7 +994,7 @@ function Get-UNCFromPath
 	Param(
 		 [Parameter(Mandatory=$False,Position=0)]
 		 [int]
-		 $Height = 30,
+		 $Height = 35,
 		 [Parameter(Mandatory=$False,Position=1)]
 		 [int]
 		 $Width = 55
@@ -917,7 +1100,10 @@ function wait-ForF12
 	}
 }
 
-
+function Send-SlackMessage {
+	$slackBody = @{ text=$msgText; channel=$slackChannel; username=$slackUsername; icon_emoji=$slackEmoji; icon_url=$slackIconUrl } | ConvertTo-Json
+	Invoke-WebRequest -Method Post -Uri $slackUrl -Body $slackBody | Out-Null
+}
 ##### END FUNCTIONS #####
 
 ##### MAIN - or The Fun Starts Here #####
@@ -927,6 +1113,16 @@ log-Write ("$timeStamp	$ver	=== Script Started ===")
 
 # Relaunch if not admin
 Invoke-RequireAdmin $script:MyInvocation
+
+$msgText="$timestamp	$env:computername - === JJs Hashmon Script Started ==="
+If ($smsAddress)
+{
+	Send-MailMessage -From $gUsername -Subject $msgText -To $smsAddress -UseSSL -Port 587 -SmtpServer smtp.gmail.com -Credential $gCredentials
+}
+If ($slackUrl)
+{
+	Send-SlackMessage $msgText, $slackUrl, $slackUsername, $slackChannel, $slackEmoji, $slackIconUrl
+}
 
 Resize-Console
 
