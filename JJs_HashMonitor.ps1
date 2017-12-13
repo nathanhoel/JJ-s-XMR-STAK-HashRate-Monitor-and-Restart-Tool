@@ -851,6 +851,7 @@ Function refresh-Screen
 	Write-Host -fore Green `nCurrent Hash Rate: $global:currHash H/s
 	Write-Host -fore Green `nMonitoring Uptime:	$tmRunTime `n
 	Write-Host "=================================================="
+
 	Write-Host -fore Green `nPool:	$global:ConnectedPool
 	Write-Host -fore Green `nPool Uptime:  $tpUpTime
 	Write-Host -fore Green `nPool Difficulty: $global:currDiff
