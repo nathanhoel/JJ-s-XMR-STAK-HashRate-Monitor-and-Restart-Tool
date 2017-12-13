@@ -855,9 +855,9 @@ Function refresh-Screen
 	Write-Host -fore Green `nPool:	$global:ConnectedPool
 	Write-Host -fore Green `nPool Uptime:  $tpUpTime
 	Write-Host -fore Green `nPool Difficulty: $global:currDiff
-	Write-Host -fore Green `nTotal Shares: $global:TotalShares
-	Write-Host -fore Green `nGood Shares:	$global:GoodShares
-	If ($global:TotalShares > 0) {
+	If ($global:TotalShares -gt 0) {
+		Write-Host -fore Green `nTotal Shares: $global:TotalShares
+		Write-Host -fore Green `nGood Shares:	$global:GoodShares
 		Write-Host -fore Green `nGood Shares %:	(($global:GoodShares / $global:TotalShares) * 100)
 	}
 	Write-Host -fore Green `nShare Time:	$global:TimeShares
