@@ -22,41 +22,47 @@
 	XMR: 42JFvWHSSGCFUBSwTz522zXrkSuhZ6WnwCFv1mFaokDS7LqfT2MyHW32QbmH3CL94xjXUW8UsQMAj8NFDxaVR8Y1TNqY54W
 	
 	Purpose:	To monitor the STAK hashrate. If it drops below the threshold,
-			the script is restarted.
+				the script is restarted.
 				
 	Features:	Script elevates itself if not run in Admin context.
-			Logging
-			The Radeon RX Vega driver is disabled/enabled.
-			Any tools defined in the "Start Video Card Management Tools Definitions"
-			section below are executed in order.
-			Sets developer suggested environment variables
-			Miner is started.
-			Hash rate is monitored.
-			If hash rate falls below the target as defined in the $hdiff variable (default is 100 hashes) 
-			or STAK stops responding the miner process is killed.
-			Script re-starts itself.
-			SMS alerts via Gmail
-			Alerts via Slack WebHooks
+				Logging
+				The Radeon RX Vega driver is disabled/enabled.
+				Any tools defined in the "Start Video Card Management Tools Definitions"
+				section below are executed in order.
+				Sets developer suggested environment variables
+				Miner is started.
+				Hash rate is monitored.
+				If hash rate falls below the target as defined in the $hdiff variable (default is 100 hashes) 
+				or STAK stops responding the miner process is killed.
+				Script re-starts itself.
+				SMS alerts via Gmail
+				Alerts via Slack WebHooks
+				Settings moved out of script and into JJs_HashMonitor_Config.txt
+				Use of UAC made optional by setting the useUAC variable (default is TRUE)
+				Option to flush the DNS cache on startup (default is TRUE)
+				Environment variable XMRSTAK_NOWAIT is set to 1 by default (To disable the dialog "Press any key".)
+				Minimum hash rate. If this threshold is not met the monitor and miner will restart. (default is not set)
+				Bug fixes (possible divide by zero - Thanks c04x)
 
 	*** IMPORTANT NOTE ***: If the script cannot kill the miner it will stop and wait for input.
-				Otherwise it would invoke the miner over and over until the PC ran out of memory.
-				In testing I have not seen it fail to kill the miner but I need to account for it.
-				It will also stop if the miner cannot be found (for obvious reasons)
-							
+							Otherwise it would invoke the miner over and over until the PC ran out of memory.
+							In testing I have not seen it fail to kill the miner but I need to account for it.
+							It will also stop if the miner cannot be found (for obvious reasons)
+
 	Requirements:	Elevated privilege (Run as Administrator)
-			Enable Powershell scripts to run.
+					Enable Powershell scripts to run.
 
 	Software Requirements:	XMR-STAK.EXE - Other STAK implementations are no longer supported.
-				By default the script is configured to use the following software:
+							By default the script is configured to use the following software:
 							
-				XMR-STAK.EXE <-- Don't remark out this one. That would be bad.
-				OverdriveNTool.exe
-				nvidiasetp0state.exe
-				nvidiaInspector.exe
+								XMR-STAK.EXE <-- Don't remark out this one. That would be bad.
+								OverdriveNTool.exe
+								nvidiasetp0state.exe
+								nvidiaInspector.exe
 							
-				If you do not wish to use some or all of them just REMARK (use a #)
-				out the lines below where they are defined in the USER VARIABLES SECTION.
-				All executable files must be in the same folder as the script.
+							If you do not wish to use some or all of them just REMARK (use a #)
+							out the lines below where they are defined in the USER VARIABLES SECTION.
+							All executable files must be in the same folder as the script.
 							
 							
 	Configuration: See below in the script for configuration items.
@@ -64,14 +70,14 @@
 	Usage:	Powershell.exe -ExecutionPolicy Bypass -File JJs_HashMonitor.ps1
 	
 	Future enhancements under consideration:	Move settings out of the script and into a simple
-							txt file to make it easier to manage them.
+												txt file to make it easier to manage them.
 												
 
 	Author:	TheJerichoJones at the Google Monster mail system
 
-	Version: 3.2
+	Version: 3.5.1
 	
-	Release Date: 2017-12-06
+	Release Date: 2017-12-10
 
 	Copyright 2017, TheJerichoJones
 

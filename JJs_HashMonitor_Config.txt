@@ -1,0 +1,123 @@
+#########################################################################
+# Begin - Set the REQUIRED variables for your Mining Configuration
+#########################################################################
+# This is the drop in total hash rate where we
+# trigger a restart (Starting HASHRATE-_hdiff)
+_hdiff="100"
+
+# Port STAK is listening on
+_stakPort="420"
+
+# STAK arguments. Not required, REMARK out if not needed
+# --noUAC switch will get rid of the extra command window from STAK with the elevation notice.
+#
+_STAKcmdline="--noUAC"
+
+##### Start Video Card Management Tools Definitions
+# Read this section carefully or you may end up overclocking your video
+# card when you don"t want to!! YOU HAVE BEEN WARNED
+#
+# These will be executed in order prior to the miner
+# Create as many as needed
+# These are expected to be in same folder as this script
+# Delete or REMARK if you don't want use it
+
+#### Vid Tool 1
+#_vidTool="OverdriveNTool.exe -p1XMR"
+
+#### Vid Tool 2
+#_vidTool="nvidiasetp0state.exe"
+
+#### Vid Tool 3
+#_vidTool="nvidiaInspector.exe -setBaseClockOffset:0,0,65 -setMemoryClockOffset:0,0,495 -setOverVoltage:0,0 -setPowerTarget:0,110 -setTempTarget:0,0,79"
+##### End VidTools
+
+#########################################################################
+# End - Set the REQUIRED variables for your Mining Configuration
+#########################################################################
+# Flush DNS Cache. After flushing the cache, it forces Windows DNS Client to query
+# your DNS server to update the client records.
+# This may be helpful in cases where a pool server goes down and a backup server with the same
+# name but different IP is stood up in its' place. 
+_FlushDNS="True"
+
+# (STARTUP ONLY)How long to wait for STAK to
+# return a hashrate before we fail out and
+# restart. There is no limiter on the number of restarts.
+# Press CTRL-C to EXIT
+_timeout="60"
+
+# How long to wait for the hashrate to stabilize.
+_STAKstable="120"
+
+#########################################################################
+########## Begin - Set SMS Parameters ##########
+#
+# UnRemark and set the parameters below to set up SMS Message via Gmail
+#
+# Set YOUR SMS eMail address
+#_smsAddress=""
+
+# Set YOUR Gmail eMail address
+#_gUsername=""
+
+# Set YOUR Gmail eMail password
+#_gPassword=""
+########## End - Set SMS Parameters ##########
+
+########## Begin - Set Slack Parameters ##########
+#
+# UnRemark and set the parameters below to set up SMS Message via Gmail
+#
+# Add the "Incoming WebHooks" integration to get started: https://slack.com/apps/A0F7XDUAZ-incoming-webhooks
+# Original code posted at:
+# https://www.reddit.com/r/sysadmin/comments/4fyrwg/slack_notifications_from_powershell/?st=jaqzuq5s&sh=038323d3
+#
+#Put your WebHooks URL here
+#_slackUrl=""
+
+# Username to send from.
+#_slackUsername="JJsHashMonitor"
+
+# Channel to post message. Can be in the format "@username" or "#channel"
+#_slackChannel=""
+
+# Example: ":clap:". (Not Mandatory). (if _slackEmoji is set, _slackIconUrl will not be used)
+# Slack uses the standard emoji codes found at Emoji Cheat Sheet (https://www.webpagefx.com/tools/emoji-cheat-sheet/)
+#_slackEmoji=":clap:"
+
+# Url for an icon to use. (Not Mandatory)
+#_slackIconUrl=""
+########## End - Set Slack Parameters ##########
+
+########## Stuff you probably shouldn't mess with... ##########
+# Minimum hash rate. If this threshold is not met the 
+# monitor and miner will restart. This could get ugly (restart loop)
+# so I would not recommend setting this.
+#_MinimumHash="1500"
+
+# Log what we do, set to to False if you don't want logging
+_Logging="True"
+
+# The miner. Expects to be in same folder as this script
+_STAKexe="XMR-STAK.EXE"
+
+# New for XMR-STAK v2.1 and above... UAC is longer necessary for XMR-STAK under Windows 10
+# It is still required for Windows 7. I'm not sure about Windows 8 (untested).
+# You still need UAC for NVIDIA Tools, pre-v2.1 STAK and the driver reset.
+#
+# This whole thing is probably a useless feature. I can't think of a circumstance
+# under which you could turn off UAC and have everything work.
+#
+# If you set _useUAC to True and you use the --noUAC switch on the STAK commandline, STAK
+# itself will still be invoked in the admin context as it is being called by an elevated process.
+# However the --noUAC switch will get rid of the extra command window from STAK with the elevation notice.
+# Currently STAK does not check if it has been invoked by an elevated process so you get that window
+# if the --noUAC switch is not used.
+# That should be resolved in the next STAK release.
+_useUAC="True"
+
+# IP or hostname of the machine running STAK (ALWAYS LOCAL) Remote start/restart of the miner is UNSUPPORTED.
+# !! DON"T FORGET TO ENABLE THE WEBSERVER IN YOUR CONFIG FILE !!
+_stakIP="127.0.0.1"
+###################### END USER DEFINED VARIABLES #######################
